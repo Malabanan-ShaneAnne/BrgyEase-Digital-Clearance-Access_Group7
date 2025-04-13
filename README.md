@@ -50,7 +50,7 @@ CREATE TABLE applications (
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/brgyease.git
+   git clone https://github.com/Malabanan-ShaneAnne/BrgyEase-Digital-Clearance-Access_Group7.git
    cd brgyease
    ```
 
