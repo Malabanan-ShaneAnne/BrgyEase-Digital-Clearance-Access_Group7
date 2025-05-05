@@ -32,13 +32,23 @@
                     <i data-feather="users" class="sidebar-icon"></i>
                     <span class="sidebar-label">Organization</span>
                 </a>
+                <a href="/transactions" class="sidebar-item">
+                    <i data-feather="list" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Transactions</span>
+                </a>
             </nav>
+            {% if user_info %}
+            <div class="sidebar-profile">
+                <i data-feather="user" class="profile-icon"></i>
+                <span class="profile-name">{{ user_info.first_name }} {{ user_info.last_name }}</span>
+            </div>
             <div class="sidebar-footer">
-                <button class="sidebar-item">
+                <a href="{{ url_for('logout') }}" class="sidebar-item">
                     <i data-feather="log-out" class="sidebar-icon"></i>
                     <span class="sidebar-label">Logout</span>
-                </button>
+                </a>
             </div>
+            {% endif %}
         </div>
 
         <div class="brgyease-main">
@@ -54,29 +64,34 @@
             </div>
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-              <div id="flash-message" class="notification">
+            <div id="flash-message" class="notification">
                 {% for category, message in messages %}
-                  <div class="alert {{ category }}">{{ message }}</div>
+                <div class="alert {{ category }}">{{ message }}</div>
                 {% endfor %}
-              </div>
+            </div>
             {% endif %}
-          {% endwith %}
+            {% endwith %}
             <div class="page-content">
                 <div class="card">
                     <h2 class="section-title" style="margin-top: 0;">Barangay Clearance Application Form</h2>
 
-                <form action="/apply" method="POST" enctype="multipart/form-data" id="clearanceForm" class="form">
+                    <form action="/apply" method="POST" enctype="multipart/form-data" id="clearanceForm" class="form">
+                        {% if user_info %}
+
                         <div class="grid grid-2" style="gap: 1rem;">
                             <div class="form-group">
                                 <label for="firstName" class="form-label">First Name</label>
-                                <input type="text" id="firstName" class="form-input" name="firstName" placeholder="Juan" required>
+                                <input type="text" id="firstName" class="form-input" name="firstName" placeholder="Juan"
+                                    value="{{ user_info.first_name }}" readonly required>
                             </div>
 
                             <div class="form-group">
                                 <label for="lastName" class="form-label">Last Name</label>
-                                <input type="text" id="lastName" name="lastName" class="form-input" placeholder="Dela Cruz" required>
+                                <input type="text" id="lastName" name="lastName" class="form-input"
+                                    placeholder="Dela Cruz" value="{{ user_info.last_name }}" readonly required>
                             </div>
                         </div>
+                        {% endif %}
 
                         <div class="grid grid-2" style="gap: 1rem;">
                             <div class="form-group">
@@ -86,7 +101,8 @@
 
                             <div class="form-group">
                                 <label for="email" class="form-label">Email</label>
-                                <input type="email" id="email" class="form-input" name="email" placeholder="brgyease@email.com" required>
+                                <input type="email" id="email" class="form-input" name="email"
+                                    placeholder="brgyease@email.com" value="{{ session['user'] }}" readonly required>
                             </div>
                         </div>
 
@@ -94,7 +110,8 @@
                         <div class="grid grid-2" style="gap: 1rem;">
                             <div class="form-group">
                                 <label for="phone" class="form-label">Phone Number</label>
-                                <input type="tel" id="phone" class="form-input" name="phone" placeholder="(+63) 9123456789" required>
+                                <input type="tel" id="phone" class="form-input" name="phone"
+                                    placeholder="(+63) 9123456789" required>
                             </div>
                             <div class="form-group">
                                 <label for="birthdate" class="form-label">Date of Birth</label>
@@ -106,6 +123,7 @@
                             <div class="form-group">
                                 <label for="sex" class="form-label">Sex</label>
                                 <select id="sex" class="form-select" name="sex" required>
+                                    <option value="" disabled selected>Select Sex</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
                                     <option value="Other">Other</option>
@@ -114,6 +132,7 @@
                             <div class="form-group">
                                 <label for="Status" class="form-label">Status</label>
                                 <select id="Status" class="form-select" name="Status" required>
+                                    <option value="" disabled selected>Select Status</option>
                                     <option value="Single">Single</option>
                                     <option value="Married">Married</option>
                                     <option value="Widowed">Widowed</option>

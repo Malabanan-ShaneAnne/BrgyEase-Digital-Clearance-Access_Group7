@@ -31,13 +31,23 @@
           <i data-feather="users" class="sidebar-icon"></i>
           <span class="sidebar-label">Organization</span>
         </a>
+        <a href="/transactions" class="sidebar-item">
+          <i data-feather="list" class="sidebar-icon"></i>
+          <span class="sidebar-label">Transactions</span>
+        </a>
       </nav>
+      {% if user_info %}
+      <div class="sidebar-profile">
+        <i data-feather="user" class="profile-icon"></i>
+        <span class="profile-name">{{ user_info.first_name }} {{ user_info.last_name }}</span>
+      </div>
       <div class="sidebar-footer">
-        <button class="sidebar-item">
+        <a href="{{ url_for('logout') }}" class="sidebar-item">
           <i data-feather="log-out" class="sidebar-icon"></i>
           <span class="sidebar-label">Logout</span>
-        </button>
+        </a>
       </div>
+      {% endif %}
     </div>
     
     <div class="brgyease-main">

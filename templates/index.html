@@ -10,6 +10,30 @@
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal" style="display:none;">
+    <form method="POST" action="{{ url_for('login') }}">
+      <h2>Login</h2>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+      <p>Don't have an account? <a href="#" onclick="switchToSignup(event)">Sign Up</a></p>
+    </form>
+  </div>
+
+  <!-- SIGNUP MODAL -->
+  <div id="signupModal" class="modal" style="display:none;">
+    <form method="POST" action="{{ url_for('signup') }}">
+      <h2>Sign Up</h2>
+      <input type="text" name="first_name" placeholder="First Name" required>
+      <input type="text" name="last_name" placeholder="Last Name" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Create Account</button>
+      <p>Already have an account? <a href="#" onclick="switchToLogin(event)">Login</a></p>
+    </form>
+  </div>
+
   <div class="brgyease-container">
     <div class="brgyease-sidebar" id="sidebar">
       <div class="sidebar-header">
@@ -31,15 +55,34 @@
           <i data-feather="users" class="sidebar-icon"></i>
           <span class="sidebar-label">Organization</span>
         </a>
+        <a href="/transactions" class="sidebar-item">
+          <i data-feather="list" class="sidebar-icon"></i>
+          <span class="sidebar-label">Transactions</span>
+        </a>
       </nav>
+      {% if user_info %}
+      <div class="sidebar-profile">
+        <i data-feather="user" class="profile-icon"></i>
+        <span class="profile-name">{{ user_info.first_name }} {{ user_info.last_name }}</span>
+      </div>
       <div class="sidebar-footer">
-        <button class="sidebar-item">
+        <a href="{{ url_for('logout') }}" class="sidebar-item">
           <i data-feather="log-out" class="sidebar-icon"></i>
           <span class="sidebar-label">Logout</span>
-        </button>
+        </a>
       </div>
+      {% endif %}
+
     </div>
-    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  <div id="flash-message" class="notification">
+                    {% for category, message in messages %}
+                      <div class="alert {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
     <div class="brgyease-main">
       <div class="mobile-header">
         <button class="btn btn-icon" id="mobile-menu">
@@ -54,11 +97,11 @@
           Your digital platform for seamless barangay clearance applications and other services
         </p>
         <div class="banner-actions">
-          <a href="/apply_page" class="btn btn-outline" style="background-color: white; color: var(--primary);">
-            Apply for Clearance
-          </a>
-          <a href="/admin" class="btn btn-outline" style="border-color: white; color: white;">
-            Dashboard
+        <a href="#" class="btn btn-outline apply-btn" style="background-color: white; color: var(--primary);">
+          Login 
+        </a>
+          <a href="#" class="btn btn-outline" onclick="switchToSignup(event)" style="border-color: white; color: white;">
+            Signup 
           </a>
         </div>
       </div>
@@ -146,7 +189,7 @@
         <p class="cta-text">
           Apply for your barangay clearance today and experience the convenience of our digital system
         </p>
-        <a href="/apply_page" class="btn btn-primary">
+        <a href="#" class="btn btn-primary apply-btn">
           Apply Now
         </a>
       </div>
@@ -156,13 +199,13 @@
   <script>
     // Initialize Feather icons
     feather.replace();
-    
+
     // Sidebar toggle functionality
     const sidebar = document.getElementById('sidebar');
     const sidebarTitle = document.getElementById('sidebar-title');
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const mobileMenu = document.getElementById('mobile-menu');
-    
+
     sidebarToggle.addEventListener('click', () => {
       sidebar.classList.toggle('sidebar-collapsed');
       if (sidebar.classList.contains('sidebar-collapsed')) {
@@ -174,20 +217,64 @@
       }
       feather.replace();
     });
-    
+
     mobileMenu.addEventListener('click', () => {
       sidebar.classList.toggle('sidebar-visible');
     });
-    
+
     // Close sidebar when clicking outside on mobile
     document.addEventListener('click', (e) => {
-      if (window.innerWidth <= 768 && 
-          !sidebar.contains(e.target) && 
+      if (window.innerWidth <= 768 &&
+          !sidebar.contains(e.target) &&
           !mobileMenu.contains(e.target) &&
           sidebar.classList.contains('sidebar-visible')) {
         sidebar.classList.remove('sidebar-visible');
       }
     });
+
+    // Modal elements
+    const loginModal = document.getElementById('loginModal');
+    const signupModal = document.getElementById('signupModal');
+
+    // Function to open login modal and hide signup modal
+    function openLogin() {
+      loginModal.style.display = 'flex';
+      signupModal.style.display = 'none';
+    }
+
+    // Function to open signup modal and hide login modal
+    function openSignup() {
+      signupModal.style.display = 'flex';
+      loginModal.style.display = 'none';
+    }
+
+    // Functions to switch modals from links inside modals
+    function switchToSignup(event) {
+      event.preventDefault();
+      openSignup();
+    }
+
+    function switchToLogin(event) {
+      event.preventDefault();
+      openLogin();
+    }
+
+    // Function to handle "Apply for Clearance" click
+    function handleApplyClick(event) {
+      event.preventDefault();
+      openLogin();
+    }
+
+    // Attach handleApplyClick to all "Apply for Clearance" buttons/links
+    document.querySelectorAll('.apply-btn').forEach(button => {
+      button.addEventListener('click', handleApplyClick);
+    });
+
+    // Close modal on click outside
+    window.onclick = function (event) {
+      if (event.target == loginModal) loginModal.style.display = 'none';
+      if (event.target == signupModal) signupModal.style.display = 'none';
+    }
   </script>
 </body>
 </html>
