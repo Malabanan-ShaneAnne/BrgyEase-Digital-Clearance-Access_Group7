@@ -484,6 +484,113 @@ a {
   width: 100%;
 }
 
+/* Modal background */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.6); /* dim background */
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal content */
+.modal form {
+  background-color: #fff;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal h2 {
+  margin-bottom: 10px;
+  font-size: 24px;
+  color: #333;
+  text-align: center;
+}
+
+/* Input fields */
+.modal input {
+  padding: 12px 15px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.modal input:focus {
+  border-color: #4a90e2;
+  outline: none;
+}
+
+/* Button */
+.modal button {
+  background-color: #4a90e2;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.modal button:hover {
+  background-color: #357ABD;
+}
+
+.sidebar-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 20px;
+  background-color: #f8f9fa;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+/* Larger Feather icon */
+.sidebar-profile .profile-icon {
+  width: 80px;
+  height: 80px;
+  stroke-width: 1.5;
+  color: #4a90e2;
+  margin-bottom: 15px;
+}
+
+/* Larger name */
+.sidebar-profile .profile-name {
+  font-size: 1.5rem; /* around 24px */
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
+
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .brgyease-sidebar {
     transform: translateX(-100%);

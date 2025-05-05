@@ -1,9 +1,11 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
 from flask_mysqldb import MySQL
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
+bcrypt = Bcrypt(app)
 
 app.secret_key = 's0m3_th1ng_r@nd0m_4nd_s3cur3'
 # MySQL config
@@ -22,15 +24,98 @@ mysql = MySQL(app)
 #####################################################
 @app.route('/')
 def home():
-    return render_template('index.html')
+    user_info = None
+    if 'user' in session:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT first_name, last_name FROM users WHERE email = %s", (session['user'],))
+        user = cur.fetchone()
+        cur.close()
+        if user:
+            user_info = {'first_name': user[0], 'last_name': user[1]}
+    return render_template('index.html', user_info=user_info)
 
 @app.route('/apply_page')
 def apply_page():
-    return render_template('apply.html')
+    user_info = None
+    if 'user' in session:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT first_name, last_name FROM users WHERE email = %s", (session['user'],))
+        user = cur.fetchone()
+        cur.close()
+        if user:
+            user_info = {'first_name': user[0], 'last_name': user[1]}
+    if not session.get('user'):
+        flash('Please login to apply for clearance.', 'warning')
+        return redirect(url_for('home', login=1))
+    return render_template('apply.html', user_info=user_info)
 
 @app.route('/organization_page')
 def organization_page():
-    return render_template('organization.html')
+    user_info = None
+    if 'user' in session:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT first_name, last_name FROM users WHERE email = %s", (session['user'],))
+        user = cur.fetchone()
+        cur.close()
+        if user:
+            user_info = {'first_name': user[0], 'last_name': user[1]}
+    return render_template('organization.html', user_info=user_info)
+
+@app.route('/transactions')
+def transactions():
+    if 'user' not in session:
+        flash('Please login to view your transactions.', 'warning')
+        return redirect(url_for('home'))
+    user_info = None
+    transactions = []
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT first_name, last_name FROM users WHERE email = %s", (session['user'],))
+    user = cur.fetchone()
+    if user:
+        user_info = {'first_name': user[0], 'last_name': user[1]}
+    cur.execute("""
+        SELECT id, date_submitted, status, amount
+        FROM applications
+        WHERE email = %s
+        ORDER BY date_submitted DESC
+    """, (session['user'],))
+    transactions = cur.fetchall()
+    cur.close()
+    return render_template('transactions.html', user_info=user_info, transactions=transactions)
+
+@app.route('/process_payment', methods=['POST'])
+def process_payment():
+    if 'user' not in session:
+        flash('Please login to proceed.', 'warning')
+        return redirect(url_for('home'))
+
+    selected_ids = request.form.getlist('selected_requests')
+    if not selected_ids:
+        flash('No requests selected.', 'warning')
+        return redirect(url_for('transactions'))
+
+    cur = mysql.connection.cursor()
+
+    for req_id in selected_ids:
+        # Get the payment method from the form for this request
+        payment_method = request.form.get(f'payment_method_{req_id}')
+
+        # Optional: Fetch current amount to confirm it exists
+        cur.execute("SELECT amount FROM applications WHERE id = %s AND email = %s", (req_id, session['user']))
+        result = cur.fetchone()
+        if result:
+            amount = result[0]
+
+            # Update the application record: status = 'Paid', save payment method
+            cur.execute("""INSERT INTO payments (application_id, email, amount, payment_method) VALUES (%s, %s, %s, %s)""", (req_id, session['user'], amount, payment_method))
+
+
+    mysql.connection.commit()
+    cur.close()
+
+    flash('Payment processed successfully!', 'success')
+    return redirect(url_for('transactions'))
+
 ######################################################
 
 
@@ -136,13 +221,12 @@ def edit_applicant(applicant_id):
     return redirect(url_for('admin_dashboard'))
 #########################################################################################################
 
-#CREATE IN CRUDE this function just get the input on the site and then INSERT INTO the DATABASE
+#CREATE IN CRUD this function just get the input on the site and then INSERT INTO the DATABASE
 ###################################################################################
 @app.route('/apply', methods=['POST'])
 def apply():
     if request.method == 'POST':
         # Get form fields
-        #The lastName on the Bracket request form is a tag name on the HTML to call here
         last_name = request.form['lastName']
         first_name = request.form['firstName']
         age = request.form['age']
@@ -158,23 +242,77 @@ def apply():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
 
+        # Hardcoded application amount
+        amount = 50.00
+
         # Save to DB
-        #This is the DATABASE how to connect the curson
         cur = mysql.connection.cursor()
-        #the execute is just the execution of the SQL command so it can save to database
         cur.execute("""
             INSERT INTO applications (
                 last_name, first_name, age, email, phone_number,
-                birthdate, sex, civil_status, valid_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (last_name, first_name, age, email, phone_number,
-              birthdate, sex, civil_status, filename))
+                birthdate, sex, civil_status, valid_id, amount
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            last_name, first_name, age, email, phone_number,
+            birthdate, sex, civil_status, filename, amount
+        ))
         mysql.connection.commit()
         cur.close()
 
-    flash('Applicant Submitted successfully!', 'success')
-
+    flash('Applicant submitted successfully!', 'success')
     return render_template('apply.html')
+
 ###########################################################################
+
+###########################################################################
+@app.route('/signup', methods=['POST'])
+def signup():
+    first_name = request.form['first_name']
+    last_name = request.form['last_name']
+    email = request.form['email']
+    password = request.form['password']
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO users (first_name, last_name, email, password) VALUES (%s, %s, %s, %s)",
+            (first_name, last_name, email, hashed_password)
+        )
+        mysql.connection.commit()
+        flash('Account created successfully!', 'success')
+    except Exception as e:
+        flash('Account creation failed. Email may already be in use.', 'danger')
+    finally:
+        cur.close()
+
+    return redirect(url_for('home'))
+
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form['email']
+    password = request.form['password']
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    cur.close()
+
+    if user and bcrypt.check_password_hash(user[2], password):
+        session['user'] = email
+        flash('Login successful!', 'success')
+    else:
+        flash('Invalid credentials', 'danger')
+    return redirect(url_for('home'))
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    flash('Logged out successfully!', 'success')
+    return redirect(url_for('home'))
+
 if __name__ == '__main__':
     app.run(debug=True)
