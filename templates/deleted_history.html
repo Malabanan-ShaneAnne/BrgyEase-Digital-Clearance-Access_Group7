@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deleted Applications</title>
+    <link rel="stylesheet" href="/static/admin.css">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+    <div style="margin: 10px 0;">
+        <a href="/admin" class="btn btn-primary">Back to Admin Dashboard</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div id="flash-message" class="notification">
+        {% for category, message in messages %}
+        <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="table-container">
+        <div class="table-header">
+            <h3>Deleted Applications List</h3>
+            <div class="search-container">
+                <i data-lucide="search"></i>
+                <input type="text" placeholder="Search applications..." class="search-input">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="applications-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Date Submitted</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Birthdate</th>
+                        <th>Sex</th>
+                        <th>Valid ID</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    {% if app[11] == 'Delete' %}
+                    <tr data-id="{{ app[0] }}">
+                        <td>{{ app[0] }}</td>
+                        <td>{{ app[10].strftime('%B %d, %Y') if app[10] else '' }}</td>
+                        <td>{{ app[2] }} {{ app[1] }}</td>
+                        <td>{{ app[4] }}</td>
+                        <td>{{ app[6].strftime('%B %d, %Y') if app[6] else '' }}</td>
+                        <td>{{ app[7] }}</td>
+                        <td>
+                            <a href="{{ url_for('static', filename='uploads/' ~ app[9]) }}" target="_blank">
+                                <img src="{{ url_for('static', filename='uploads/' ~ app[9]) }}" alt="Valid ID" width="60">
+                            </a>
+                        </td>
+                        <td><span class="status {{ app[11].replace(' ', '_') | lower }}">{{ app[11] }}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-outline btn-sm restore-btn" data-id="{{ app[0] }}">Restore</button>
+                                <button class="btn btn-outline btn-sm delete-btn" data-id="{{ app[0] }}">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Restore functionality
+            document.querySelectorAll('.restore-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    if (confirm("Are you sure you want to restore this applicant?")) {
+                        fetch(`/restore/${id}`, {
+                            method: 'POST'
+                        }).then(response => {
+                            if (response.redirected) {
+                                alert("Applicant restored successfully.");
+                                window.location.href = response.url;
+                            } else {
+                                alert("Failed to restore applicant.");
+                            }
+                        }).catch(() => {
+                            alert("Error occurred while restoring applicant.");
+                        });
+                    }
+                });
+            });
+
+            // Delete functionality
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    if (confirm("⚠️ This will permanently delete the applicant. Proceed?")) {
+                        fetch(`/delete_applicant/${id}`, {
+                            method: 'DELETE'
+                        }).then(response => {
+                            if (response.redirected) {
+                                alert("Applicant deleted successfully.");
+                                window.location.href = response.url;
+                            } else {
+                                alert("Failed to delete applicant.");
+                            }
+                        }).catch(() => {
+                            alert("Error occurred while deleting applicant.");
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

@@ -171,7 +171,17 @@
     background-color: #00b894;
   }
   
+  .status.delete {
+    background-color: #d63031;
+  }
+  
   .status.rejected {
+    background-color: #d63031;
+  }
+  .status.paid {
+    background-color: #0d18b9;
+  }
+  .status.punta_ka_office{
     background-color: #d63031;
   }
   
@@ -418,6 +428,17 @@ select:focus {
 
 .btn-cancel:hover {
     background-color: #d6d6d6;
+}
+.modal-body {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.left-side, .right-side {
+  flex: 1;
+  min-width: 300px;
 }
 
 @keyframes fadeIn {

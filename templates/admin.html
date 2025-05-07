@@ -55,14 +55,14 @@
                 </div>
                 {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                  <div id="flash-message" class="notification">
+                <div id="flash-message" class="notification">
                     {% for category, message in messages %}
-                      <div class="alert {{ category }}">{{ message }}</div>
+                    <div class="alert {{ category }}">{{ message }}</div>
                     {% endfor %}
-                  </div>
+                </div>
                 {% endif %}
-              {% endwith %}
-              
+                {% endwith %}
+
                 <div class="table-container">
                     <div class="table-header">
                         <h3>Applications List</h3>
@@ -89,12 +89,14 @@
                             </thead>
                             <tbody>
                                 {% for app in applications %}
+                                {% if app[11] != 'Delete' %}
                                 <tr data-id="{{ app[0] }}"
                                     data-date="{{ app[10].strftime('%B %d, %Y') if app[10] else '' }}"
                                     data-name="{{ app[2] }} {{ app[1] }}" data-age="{{ app[3] }}"
                                     data-email="{{ app[4] }}" data-phone="{{ app[5] }}"
                                     data-birthdate="{{ app[6].strftime('%B %d, %Y') if app[6] else '' }}"
                                     data-sex="{{ app[7] }}" data-civil="{{ app[8] }}" data-status="{{ app[11] }}"
+                                    data-amount="{{ app[12] }}" data-payment-method="{{ app[13] }}"
                                     data-idlink="{{ url_for('static', filename='uploads/' ~ app[9]) }}">
                                     <td>{{ app[0] }}</td>
                                     <td>{{ app[10].strftime('%B %d, %Y') if app[10] else '' }}</td>
@@ -108,7 +110,8 @@
                                                 alt="Valid ID" width="60">
                                         </a>
                                     </td>
-                                    <td><span class="status {{ app[11] | lower }}">{{ app[11] }}</span></td>
+                                    <td><span class="status {{ app[11].replace(' ', '_') | lower }}">{{ app[11]
+                                            }}</span></td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn btn-outline btn-sm"
@@ -126,6 +129,8 @@
                                         </div>
                                     </td>
                                 </tr>
+                                {% endif %}
+
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -137,6 +142,10 @@
                         <button class="btn btn-outline btn-sm">2</button>
                         <button class="btn btn-outline btn-sm">Next</button>
                     </div>
+                    <div class="navigation-links" style="margin-top: 20px;">
+                        <a href="/deleted_history" class="nav-link">Deleted History</a> |
+                        
+                    </div>
                 </div>
             </div>
         </div>
@@ -144,31 +153,48 @@
 
     <!-- Modal -->
     <div id="applicantModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content modern-modal">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2>Applicant Details</h2>
-            <p><strong>ID:</strong> <span id="modal-id"></span></p>
-            <p><strong>Date:</strong> <span id="modal-date"></span></p>
-            <p><strong>Name:</strong> <span id="modal-name"></span></p>
-            <p><strong>Age:</strong> <span id="modal-age"></span></p>
-            <p><strong>Birthdate:</strong> <span id="modal-birthdate"></span></p>
-            <p><strong>Email:</strong> <span id="modal-email"></span></p>
-            <p><strong>Phone:</strong> <span id="modal-phone"></span></p>
-            <p><strong>Sex:</strong> <span id="modal-sex"></span></p>
-            <p><strong>Civil Status:</strong> <span id="modal-civil"></span></p>
-            <p><strong>Status:</strong> <span id="modal-status"></span></p>
-            <p><strong>Valid ID:</strong> <a id="modal-idlink" href="#" target="_blank">View ID</a></p>
+
+            <div class="modal-body">
+                <!-- Left column -->
+                <div class="modal-col left-side">
+                    <p><strong>ID:</strong> <span id="modal-id"></span></p>
+                    <p><strong>Date:</strong> <span id="modal-date"></span></p>
+                    <p><strong>Name:</strong> <span id="modal-name"></span></p>
+                    <p><strong>Age:</strong> <span id="modal-age"></span></p>
+                    <p><strong>Birthdate:</strong> <span id="modal-birthdate"></span></p>
+                    <p><strong>Email:</strong> <span id="modal-email"></span></p>
+                    <p><strong>Phone:</strong> <span id="modal-phone"></span></p>
+                    <p><strong>Sex:</strong> <span id="modal-sex"></span></p>
+                </div>
+
+                <!-- Right column -->
+                <div class="modal-col right-side">
+                    <p><strong>Civil Status:</strong> <span id="modal-civil"></span></p>
+                    <p><strong>Status:</strong> <span id="modal-status"></span></p>
+                    <p><strong>Amount:</strong> <span id="modal-amount"></span></p>
+                    <p><strong>Payment:</strong> <span id="modal-payment-method"></span></p>
+                    <p><strong>Valid ID:</strong>
+                        <a id="modal-idlink" href="#" target="_blank">View ID</a>
+                    </p>
+                </div>
+            </div>
 
             <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="viewHistoryBtn">
+                    View Edit History
+                </button>
                 <button class="btn btn-primary btn-sm" onclick="openEditModalFromModal()">Edit</button>
                 <form id="delete-form" action="" method="POST" style="display:inline;">
                     <button class="btn btn-danger" type="submit"
                         onclick="return confirm('Are you sure you want to delete this applicant?')">Delete</button>
                 </form>
             </div>
-
         </div>
     </div>
+
 
     <!-- Edit Modal -->
     <div id="editApplicantModal" class="modal">
@@ -237,9 +263,34 @@
                     </div>
                 </div>
 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-status">Status</label>
+                        <select name="status" id="edit-status" required>
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Punta ka Office">Punta ka Office</option>
+
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-amount">Amount</label>
+                        <input type="number" name="amount" id="edit-amount" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-payment-method">Payment Method</label>
+                        <select name="payment_method" id="edit-payment-method" required>
+                            <option value="cash">Cash</option>
+                            <option value="gcash">GCash</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="modal-actions">
-                    <button type="submit" class="btn btn-save">💾 Save Changes</button>
-                    <button type="button" class="btn btn-cancel" onclick="closeEditModal()">✖ Cancel</button>
+                    <button type="submit" class="btn btn-save">Save Changes</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -262,8 +313,11 @@
             document.getElementById("modal-civil").textContent = row.dataset.civil;
             document.getElementById("modal-status").textContent = row.dataset.status;
             document.getElementById("modal-idlink").href = row.dataset.idlink;
+            document.getElementById("modal-amount").textContent = row.dataset.amount;
+            document.getElementById("modal-payment-method").textContent = row.dataset.paymentMethod;
+
             // Set delete form action
-            document.getElementById("delete-form").action = `/delete_applicant/${id}`;
+            document.getElementById("delete-form").action = `/delete/${id}`;
 
             document.getElementById("applicantModal").style.display = "block";
         }
@@ -295,6 +349,9 @@
             document.getElementById('edit-birthdate').value = new Date(row.dataset.birthdate).toISOString().split('T')[0];
             document.getElementById('edit-sex').value = row.dataset.sex;
             document.getElementById('edit-civil').value = row.dataset.civil;
+            document.getElementById('edit-status').value = row.dataset.status;
+            document.getElementById('edit-amount').value = row.dataset.amount || '';
+            document.getElementById('edit-payment-method').value = row.dataset.paymentMethod || '';
 
             // Set form action dynamically
             document.getElementById('editForm').action = `/edit_applicant/${id}`;
@@ -309,6 +366,13 @@
             const id = document.getElementById("modal-id").textContent;
             openEditModal(id);
         }
+        document.getElementById('viewHistoryBtn').addEventListener('click', function () {
+            const applicantId = document.getElementById('modal-id').textContent;
+            if (applicantId) {
+                window.location.href = '/edit_history/' + applicantId;
+            }
+        });
+
     </script>
 </body>
 

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Application Edit History</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            padding: 2rem;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+            font-weight: 600;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+
+        .history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .history-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            position: relative;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .history-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .editor-info {
+            flex-grow: 1;
+        }
+
+        .editor-info h4 {
+            margin: 0;
+            color: #34495e;
+            font-weight: 600;
+        }
+
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .toggle-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .toggle-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .toggle-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .formatted-data {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .raw-json {
+            display: none;
+            background: #f4f8fa;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+        }
+
+        .applicant-card {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+
+        .field-group {
+            margin-bottom: 0.5rem;
+        }
+
+        .field-label {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.2rem;
+        }
+
+        .field-value {
+            font-size: 0.95rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background-color: #ffeaa7;
+            color: #d35400;
+        }
+
+        .status-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .no-history {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .section-title {
+            margin: 0.5rem 0 1rem;
+            font-size: 1rem;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #eaeaea;
+            margin: 1rem 0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .applicant-card {
+                grid-template-columns: 1fr;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .controls {
+                margin-top: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Edit History for Applicant ID: <span id="applicant-id">{{ applicant_id }}</span></h2>
+
+    <button class="toggle-btn" onclick="window.location.href='/admin'">Back to Admin Dashboard</button>
+
+    <div class="history-container">
+        {% if history %}
+        {% for entry in history %}
+        <div class="history-card">
+            <div class="card-header">
+                <div class="editor-info">
+                    <h4>Edited By: {{ entry[4] }}</h4>
+                    <div class="timestamp">{{ entry[3] }}</div>
+                </div>
+                <div class="controls">
+                    <button class="toggle-btn view-formatted" onclick="toggleFormatted(this, {{ loop.index }})">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        View Details
+                    </button>
+                    <button class="toggle-btn view-json" onclick="toggleJson(this, {{ loop.index }})">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                        View JSON
+                    </button>
+                </div>
+            </div>
+
+            <div class="formatted-data" id="formatted-{{ loop.index }}">
+                <!-- This will be populated by JavaScript -->
+            </div>
+
+            <div class="raw-json" id="json-{{ loop.index }}">{{ entry[2] }}</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="no-history">No edit history available for this applicant.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        // Initialize all cards when the page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            const cards = document.querySelectorAll('.history-card');
+            cards.forEach((card, index) => {
+                prepareCardData(index + 1);
+            });
+        });
+
+        function prepareCardData(index) {
+            const jsonElement = document.getElementById(`json-${index}`);
+            const jsonContent = jsonElement.innerText;
+
+            try {
+                // Parse the JSON data - handle both direct JSON and stringified JSON
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(jsonContent);
+                } catch (initialError) {
+                    // If direct parsing fails, try to handle cases where JSON might be escaped or double-encoded
+                    const cleanedContent = jsonContent.replace(/\\"/g, '"').replace(/^"/, '').replace(/"$/, '');
+                    try {
+                        parsedData = JSON.parse(cleanedContent);
+                    } catch (secondError) {
+                        // If that fails too, try one more approach - sometimes data might be double-stringified
+                        try {
+                            const doubleCleanedContent = cleanedContent.replace(/\\\\/g, '\\');
+                            parsedData = JSON.parse(doubleCleanedContent);
+                        } catch (thirdError) {
+                            throw initialError; // If all attempts fail, use the original error
+                        }
+                    }
+                }
+
+                // Format the raw JSON for display
+                jsonElement.innerHTML = `<pre>${JSON.stringify(parsedData, null, 4)}</pre>`;
+
+                // Prepare the formatted view
+                const formattedElement = document.getElementById(`formatted-${index}`);
+                formattedElement.innerHTML = createFormattedCard(parsedData);
+            } catch (error) {
+                console.error("Error parsing JSON:", error);
+                jsonElement.innerHTML = `<pre>Invalid JSON: ${error.message}</pre>`;
+                document.getElementById(`formatted-${index}`).innerHTML = "<p>Unable to display data: Invalid JSON format</p>";
+            }
+        }
+
+        function createFormattedCard(data) {
+            // Define the status styles
+            const getStatusClass = (status) => {
+                if (!status) return '';
+                status = String(status).toLowerCase();
+                if (status.includes('pending')) return 'status-pending';
+                if (status.includes('approved') || status.includes('accept')) return 'status-approved';
+                if (status.includes('reject') || status.includes('denied')) return 'status-rejected';
+                return '';
+            };
+
+            // Format date if it exists
+            const formatDate = (dateStr) => {
+                if (!dateStr) return 'N/A';
+                try {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                } catch (e) {
+                    return dateStr;
+                }
+            };
+
+            // Handle field access with proper path (checking for nested objects)
+            const getFieldValue = (obj, path) => {
+                // Check if the field exists directly in the object
+                if (obj.hasOwnProperty(path)) {
+                    return obj[path];
+                }
+
+                // Check if the field exists in a nested object
+                for (const key in obj) {
+                    const value = obj[key];
+                    if (typeof value === 'object' && value !== null) {
+                        if (value.hasOwnProperty(path)) {
+                            return value[path];
+                        }
+                    }
+                }
+
+                // Return null if the field doesn't exist
+                return null;
+            };
+
+            // First, list all fields we're looking for
+            const applicantFields = [
+                { key: '0', label: 'ID' },
+                { key: '2', label: 'First Name' },
+                { key: '1', label: 'Last Name' },
+                { key: '4', label: 'Email' },
+                { key: '5', label: 'Phone Number' },
+                { key: '3', label: 'Age' },
+                { key: '6', label: 'Birthdate', format: formatDate },
+                { key: '7', label: 'Sex' },
+                { key: '8', label: 'Civil Status' }
+            ];
+
+            const applicationFields = [
+                {
+                    key: '11', label: 'Status', format: (value) =>
+                        `<span class="status-badge ${getStatusClass(value)}">${value || 'N/A'}</span>`
+                },
+                { key: '12', label: 'Amount', format: (value) => value ? '₱' + value : 'N/A' },
+                { key: '13', label: 'Payment Method' },
+                { key: '9', label: 'Valid ID Type' },
+                { key: '10', label: 'Date Submitted', format: formatDate }
+            ];
+
+            // Collect all fields we expect to show in main sections
+            const mainFields = [...applicantFields, ...applicationFields].map(field => field.key);
+
+            // Create HTML for personal information section
+            let html = `
+            <h3 class="section-title">Applicant Information</h3>
+            <div class="applicant-card">
+        `;
+
+            // Add all applicant fields
+            for (const field of applicantFields) {
+                const value = getFieldValue(data, field.key);
+                const displayValue = field.format ? field.format(value) : (value || 'N/A');
+
+                html += `
+                <div class="field-group">
+                    <div class="field-label">${field.label}</div>
+                    <div class="field-value">${displayValue}</div>
+                </div>
+            `;
+            }
+
+            html += `
+            </div>
+
+            <div class="divider"></div>
+
+            <h3 class="section-title">Application Details</h3>
+            <div class="applicant-card">
+        `;
+
+            // Add all application fields
+            for (const field of applicationFields) {
+                const value = getFieldValue(data, field.key);
+                const displayValue = field.format ? field.format(value) : (value || 'N/A');
+
+                html += `
+                <div class="field-group">
+                    <div class="field-label">${field.label}</div>
+                    <div class="field-value">${displayValue}</div>
+                </div>
+            `;
+            }
+
+            html += `</div>`;
+
+            // Add additional fields that aren't in our main sections
+            const additionalFields = Object.entries(data).filter(([key, value]) => {
+                // Skip fields we've already included in the main sections
+                if (mainFields.includes(key)) return false;
+
+                // Skip fields that are objects (we'll flatten them later)
+                if (typeof value === 'object' && value !== null) return false;
+
+                return true;
+            });
+
+            // Also check for nested fields in objects
+            for (const [key, value] of Object.entries(data)) {
+                if (typeof value === 'object' && value !== null) {
+                    for (const [nestedKey, nestedValue] of Object.entries(value)) {
+                        // Skip if this nested key is already in our main fields
+                        if (mainFields.includes(nestedKey)) continue;
+
+                        // Otherwise, add to additional fields with a prefixed key
+                        additionalFields.push([`${key}.${nestedKey}`, nestedValue]);
+                    }
+                }
+            }
+
+            // If we have additional fields, add them to the HTML
+            if (additionalFields.length > 0) {
+                html += `
+                <div class="divider"></div>
+                <h3 class="section-title">Additional Information</h3>
+                <div class="applicant-card">
+            `;
+
+                for (const [key, value] of additionalFields) {
+                    const displayKey = key.replace(/_/g, ' ').toUpperCase();
+                    const displayValue = value || 'N/A';
+
+                    html += `
+                    <div class="field-group">
+                        <div class="field-label">${displayKey}</div>
+                        <div class="field-value">${displayValue}</div>
+                    </div>
+                `;
+                }
+
+                html += `</div>`;
+            }
+
+            return html;
+        }
+
+        function toggleFormatted(button, index) {
+            const formattedBlock = document.getElementById(`formatted-${index}`);
+            const jsonBlock = document.getElementById(`json-${index}`);
+
+            if (formattedBlock.style.display === "none" || formattedBlock.style.display === "") {
+                formattedBlock.style.display = "block";
+                jsonBlock.style.display = "none";
+
+                // Update button text
+                button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 15l-6-6-6 6"/>
+                </svg>
+                Hide Details
+            `;
+
+                // Reset the other button
+                const siblingButton = button.nextElementSibling || button.previousElementSibling;
+                siblingButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                View JSON
+            `;
+            } else {
+                formattedBlock.style.display = "none";
+                button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                View Details
+            `;
+            }
+        }
+
+        function toggleJson(button, index) {
+            const jsonBlock = document.getElementById(`json-${index}`);
+            const formattedBlock = document.getElementById(`formatted-${index}`);
+
+            if (jsonBlock.style.display === "none" || jsonBlock.style.display === "") {
+                jsonBlock.style.display = "block";
+                formattedBlock.style.display = "none";
+
+                // Update button text
+                button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 15l-6-6-6 6"/>
+                </svg>
+                Hide JSON
+            `;
+
+                // Reset the other button
+                const siblingButton = button.previousElementSibling || button.nextElementSibling;
+                siblingButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                View Details
+            `;
+            } else {
+                jsonBlock.style.display = "none";
+                button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                View JSON
+            `;
+            }
+        }
+    </script>
+
+</body>
+
+</html>

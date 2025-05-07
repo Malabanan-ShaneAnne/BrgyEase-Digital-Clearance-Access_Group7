@@ -1,8 +1,10 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.utils import secure_filename
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
+import json
+from datetime import datetime
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -106,9 +108,17 @@ def process_payment():
         if result:
             amount = result[0]
 
-            # Update the application record: status = 'Paid', save payment method
+            # Insert into payments table
             cur.execute("""INSERT INTO payments (application_id, email, amount, payment_method) VALUES (%s, %s, %s, %s)""", (req_id, session['user'], amount, payment_method))
 
+            # Update applications table with amount and payment_method
+            cur.execute("""UPDATE applications SET amount = %s, payment_method = %s WHERE id = %s AND email = %s""", (amount, payment_method, req_id, session['user']))
+
+            # If payment method is gcash, update status to 'Paid'
+            if payment_method and payment_method.lower() == 'gcash':
+                cur.execute("""UPDATE applications SET status = 'Paid' WHERE id = %s AND email = %s""", (req_id, session['user']))
+            if payment_method and payment_method.lower() == 'cash':
+                cur.execute("""UPDATE applications SET status = 'Punta ka Office' WHERE id = %s AND email = %s""", (req_id, session['user']))    
 
     mysql.connection.commit()
     cur.close()
@@ -172,19 +182,46 @@ def reject_applicant(applicant_id):
     flash('Applicant Rejected successfully!', 'danger')
     return redirect(url_for('admin_dashboard'))
 #################################################
+@app.route('/delete/<int:applicant_id>', methods=['POST'])
+def temporary_delete(applicant_id):
+    cur = mysql.connection.cursor()
+    cur.execute("UPDATE applications SET status = 'Delete' WHERE id = %s", (applicant_id,))
+    mysql.connection.commit()
+    cur.close()
+    flash('Applicant Deleted successfully!', 'danger')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/restore/<int:applicant_id>', methods=['POST'])
+def restore_applicant(applicant_id):
+    cur = mysql.connection.cursor()
+    cur.execute("UPDATE applications SET status = 'Pending' WHERE id = %s", (applicant_id,))
+    mysql.connection.commit()
+    cur.close()
+    flash('Applicant Restored successfully!', 'success')
+    return redirect(url_for('delete_history'))
+
 
 #CRUD THIS IS THE DELETE
-@app.route('/delete_applicant/<int:applicant_id>', methods=['POST'])
+@app.route('/delete_applicant/<int:applicant_id>', methods=['DELETE'])
 def delete_applicant(applicant_id):
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM applications WHERE id = %s", (applicant_id,))
     mysql.connection.commit()
     cur.close()
     flash('Applicant Deleted successfully!', 'danger')
-    return redirect(url_for('admin_dashboard'))
+    return redirect(url_for('delete_history'))
+
+@app.route('/deleted_history')
+def delete_history():
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM applications ORDER BY date_submitted DESC")
+    applications = cur.fetchall()
+    cur.close()
+    return render_template('deleted_history.html', applications=applications)
 
 #CRUD THIS IS THE UPDATE ALSO CAUSE CAN EDIT THE ALREADY CREATED DATA 
 #ALTER IS A DIFFERENT SCENARIO This modified the Table Variable like adding more columns the UPDATE is just changing the DATA inside the COLUMNS  
+
 @app.route('/edit_applicant/<int:applicant_id>', methods=['POST'])
 def edit_applicant(applicant_id):
     last_name = request.form['lastName']
@@ -195,31 +232,57 @@ def edit_applicant(applicant_id):
     birthdate = request.form['birthdate']
     sex = request.form['sex']
     civil_status = request.form['Status']
+    status = request.form['status']
+    amount = request.form['amount']
+    payment_method = request.form['payment_method']
     file = request.files['idPhoto']
 
-    # Save updated valid ID only if uploaded
+    cursor = mysql.connection.cursor()
+
+    # ✅ Fetch old data for history logging
+    cursor.execute("SELECT * FROM applications WHERE id = %s", (applicant_id,))
+    old_data = cursor.fetchone()
+
+    # ✅ Convert old data to a JSON string and insert into application_history
+    cursor.execute("""
+        INSERT INTO application_history (application_id, old_data, edited_by)
+        VALUES (%s, %s, %s)
+    """, (
+        applicant_id,
+        json.dumps(old_data, default=str),  # Convert to JSON safely
+        session.get('admin_email', 'admin')  # fallback if session email not set
+    ))
+
+    # ✅ Now proceed with your existing update logic
     if file and file.filename != '':
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        # Update with new ID path
         query = """UPDATE applications SET last_name=%s, first_name=%s, age=%s, email=%s,
-                   phone_number=%s, birthdate=%s, sex=%s, civil_status=%s, valid_id=%s
+                   phone_number=%s, birthdate=%s, sex=%s, civil_status=%s, valid_id=%s,
+                   status=%s, amount=%s, payment_method=%s
                    WHERE id=%s"""
-        values = (last_name, first_name, age, email, phone_number, birthdate, sex, civil_status, filename, applicant_id)
+        values = (last_name, first_name, age, email, phone_number, birthdate, sex, civil_status, filename, status, amount, payment_method, applicant_id)
     else:
-        # No ID update
         query = """UPDATE applications SET last_name=%s, first_name=%s, age=%s, email=%s,
-                   phone_number=%s, birthdate=%s, sex=%s, civil_status=%s
+                   phone_number=%s, birthdate=%s, sex=%s, civil_status=%s,
+                   status=%s, amount=%s, payment_method=%s
                    WHERE id=%s"""
-        values = (last_name, first_name, age, email, phone_number, birthdate, sex, civil_status, applicant_id)
+        values = (last_name, first_name, age, email, phone_number, birthdate, sex, civil_status, status, amount, payment_method, applicant_id)
 
-    cursor = mysql.connection.cursor()
     cursor.execute(query, values)
     mysql.connection.commit()
     cursor.close()
+
     flash('Applicant updated successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
 #########################################################################################################
+@app.route('/edit_history/<int:applicant_id>')
+def edit_history(applicant_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM application_history WHERE application_id = %s ORDER BY edited_at DESC", (applicant_id,))
+    history = cursor.fetchall()
+    cursor.close()
+    return render_template('edit_history.html', history=history, applicant_id=applicant_id)
 
 #CREATE IN CRUD this function just get the input on the site and then INSERT INTO the DATABASE
 ###################################################################################
@@ -294,6 +357,10 @@ def signup():
 def login():
     email = request.form['email']
     password = request.form['password']
+
+    if email == 'admin@admin.com' and password == 'admin':
+        flash('Admin Login', 'success')
+        return redirect(url_for('admin_dashboard'))
 
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM users WHERE email = %s", (email,))
